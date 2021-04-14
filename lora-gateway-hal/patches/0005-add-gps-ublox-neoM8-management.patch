@@ -1,0 +1,122 @@
+diff -Nurw a/libloragw/src/loragw_gps.c b/libloragw/src/loragw_gps.c
+--- a/libloragw/src/loragw_gps.c	2017-04-05 13:34:03.000000000 +0200
++++ b/libloragw/src/loragw_gps.c	2021-04-13 16:46:53.324325859 +0200
+@@ -57,7 +57,8 @@
+ #define MINUS_10PPM         0.99999
+ #define DEFAULT_BAUDRATE    B9600
+ 
+-#define UBX_MSG_NAVTIMEGPS_LEN  16
++#define UBX_MSG_NAVTIMEGPS_LEN  11
++#define UBX_MSG_REVFW_LEN  8
+ 
+ /* -------------------------------------------------------------------------- */
+ /* --- PRIVATE VARIABLES ---------------------------------------------------- */
+@@ -255,18 +256,34 @@
+     int i;
+     struct termios ttyopt; /* serial port options */
+     int gps_tty_dev; /* file descriptor to the serial port of the GNSS module */
++//
++//    uint8_t ubx_cmd_timegps[UBX_MSG_NAVTIMEGPS_LEN] = {
++//                    0xB5, 0x62, /* UBX Sync Chars */
++//                    0x06, 0x01, /* CFG-MSG Class/ID */
++//                    0x08, 0x00, /* Payload length */
++//                    0x01, 0x20, 0x00, 0x01, 0x01, 0x00, 0x00, 0x00, /* Enable NAV-TIMEGPS output on serial */
++//                    0x32, 0x94 }; /* Checksum */
++
++//32.10.14.3 Set Message Rate (u-blox NEO-M8N)
+     uint8_t ubx_cmd_timegps[UBX_MSG_NAVTIMEGPS_LEN] = {
+                     0xB5, 0x62, /* UBX Sync Chars */
+                     0x06, 0x01, /* CFG-MSG Class/ID */
+-                    0x08, 0x00, /* Payload length */
+-                    0x01, 0x20, 0x00, 0x01, 0x01, 0x00, 0x00, 0x00, /* Enable NAV-TIMEGPS output on serial */
+-                    0x32, 0x94 }; /* Checksum */
++                        0x03, 0x00, /* Payload length */
++                        0x01, 0x20, 0x01, /* Enable NAV-TIMEGPS output on serial */
++                        0x2C, 0x83 }; /* Checksum */
++
++//uint8_t ubx_cmd_revfw[UBX_MSG_REVFW_LEN] = {
++//                               0xB5, 0x62, /* UBX Sync Chars */
++//                               0x0A, 0x04, /* CFG-MSG Class/ID */
++//                               0x00, 0x00, /* Payload length */
++//                               0x25, 0x5C }; /* Checksum */
+     ssize_t num_written;
+ 
+     /* check input parameters */
+     CHECK_NULL(tty_path);
+     CHECK_NULL(fd_ptr);
+ 
++	DEBUG_MSG("OPEN GPS TTY PORT [%s]\n",tty_path);
+     /* open TTY device */
+     gps_tty_dev = open(tty_path, O_RDWR | O_NOCTTY);
+     if (gps_tty_dev <= 0) {
+@@ -354,7 +371,7 @@
+     if (num_written != UBX_MSG_NAVTIMEGPS_LEN) {
+         DEBUG_MSG("ERROR: Failed to write on serial port (written=%d)\n", (int) num_written);
+     }
+-
++    DEBUG_MSG("ENABLE NAV MSG\n");
+     /* get timezone info */
+     tzset();
+ 
+@@ -458,7 +475,7 @@
+                         gps_week |= (uint8_t)serial_buff[15] << 8; /* GPS week number */
+ 
+                         gps_time_ok = true;
+-#if 0
++//#if 0
+                         /* For debug */
+                         {
+                             short ubx_gps_hou = 0; /* hours (0-23) */
+@@ -469,30 +486,37 @@
+                             ubx_gps_sec = (gps_iTOW / 1000) % 60;
+                             ubx_gps_min = (gps_iTOW / 1000 / 60) % 60;
+                             ubx_gps_hou = (gps_iTOW / 1000 / 60 / 60) % 24;
+-                            printf("  GPS time = %02d:%02d:%02d\n", ubx_gps_hou, ubx_gps_min, ubx_gps_sec);
++                            //printf("  GPS time = %02d:%02d:%02d\n", ubx_gps_hou, ubx_gps_min, ubx_gps_sec);
++                            DEBUG_MSG("  GPS time = %02d:%02d:%02d\n", ubx_gps_hou, ubx_gps_min, ubx_gps_sec);
+                         }
+-#endif
++//#endif
+                     } else { /* valid */
+                         gps_time_ok = false;
+                     }
+ 
+                     return UBX_NAV_TIMEGPS;
+                 } else if ((serial_buff[2] == 0x05) && (serial_buff[3] == 0x00)) {
++
+                     DEBUG_MSG("NOTE: UBX ACK-NAK received\n");
+                     return IGNORED;
+                 } else if ((serial_buff[2] == 0x05) && (serial_buff[3] == 0x01)) {
++
+                     DEBUG_MSG("NOTE: UBX ACK-ACK received\n");
+                     return IGNORED;
+                 } else { /* not a supported message */
+                     DEBUG_MSG("ERROR: UBX message is not supported (%02x %02x)\n", serial_buff[2], serial_buff[3]);
++
+                     return IGNORED;
+                 }
+             } else { /* checksum failed */
+                 DEBUG_MSG("ERROR: UBX message is corrupted, checksum failed\n");
++
+                 return INVALID;
+             }
+         } else { /* message contains less bytes than indicated by header */
+-            DEBUG_MSG("ERROR: UBX message incomplete\n");
++
++            DEBUG_MSG("ERROR: UBX message incomplete, less bytes that indicated by header: msg_size [%d], buff_size [%d], msg [0x%X,0x%X,0x%X,0x%X,0x%X-0x%X,]\n",*msg_size,buff_size,
++        			serial_buff[0],serial_buff[1],serial_buff[2],serial_buff[3],serial_buff[5],serial_buff[4]);
+             return INCOMPLETE;
+         }
+     } else { /* Not a UBX message */
+diff -Nurw a/libloragw/tst/test_loragw_gps.c b/libloragw/tst/test_loragw_gps.c
+--- a/libloragw/tst/test_loragw_gps.c	2017-04-05 13:34:03.000000000 +0200
++++ b/libloragw/tst/test_loragw_gps.c	2021-04-13 18:11:53.183345801 +0200
+@@ -162,7 +162,7 @@
+     printf("*** Library version information ***\n%s\n***\n", lgw_version_info());
+ 
+     /* Open and configure GPS */
+-    i = lgw_gps_enable("/dev/ttyAMA0", "ubx7", 0, &gps_tty_dev);
++    i = lgw_gps_enable("/dev/ttyS1", "ubx7", 0, &gps_tty_dev);
+     if (i != LGW_GPS_SUCCESS) {
+         printf("ERROR: IMPOSSIBLE TO ENABLE GPS\n");
+         exit(EXIT_FAILURE);
