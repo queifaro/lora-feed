@@ -29,7 +29,7 @@ reset_sx1301_board ()
 	sleep 1
 	echo "0" > /sys/class/gpio/${pio}/value
 	sleep 1
-	echo "in" > /sys/class/gpio/${pio}/direction
+	echo ${pin} > /sys/class/gpio/unexport
 	sleep 1
 
 	logger "lora_pkt_fwd: SX1301 reset completed"
