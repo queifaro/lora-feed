@@ -33,5 +33,6 @@ echo "out" > /sys/class/gpio/${pio}/direction
 echo "1" > /sys/class/gpio/${pio}/value
 echo "0" > /sys/class/gpio/${pio}/value
 echo "in" > /sys/class/gpio/${pio}/direction
+echo ${pin} > /sys/class/gpio/unexport
 
 logger "sx1301 is resetted"
