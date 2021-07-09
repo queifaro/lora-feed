@@ -1,5 +1,6 @@
 #!/bin/sh
 # Copyright (C) 2020 Xue Liu <liuxuenetmail@gmail.com>
+# 2021 Fabio Rossoni <fabio.rossoni@urmet.it>
 
 . $IPKG_INSTROOT/lib/functions.sh
 
@@ -13,7 +14,7 @@ if [ $reset_enable != "1" ]
 then
     exit
 fi
-
+# pioE 20 is LoRa 1.0 single board or LoRa 1.5 left board
 pio=pioE20
 
 config_get pin SX1301_conf reset_pin

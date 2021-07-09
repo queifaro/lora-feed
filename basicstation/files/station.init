@@ -13,12 +13,6 @@ start_service()
 
 	logger "basicstation: Start"
 
-	gpioset gpiochip4 20=1
-	sleep 1
-	gpioset gpiochip4 20=0
-
-	logger "basicstation: reset sx1301 LoRa Board 1.0 or 1.5 Left"
-
 	config_load station
 
 #	generate_conf
@@ -37,5 +31,5 @@ start_service()
 
 stop_service() {
     logger "basicstation: Stop"
-    killall basicstation 
+    killall ${PROG} 
 }
