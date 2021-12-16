@@ -14,8 +14,8 @@ if [ $reset_enable != "1" ]
 then
     exit
 fi
-# pioE 20 is LoRa 1.0 single board or LoRa 1.5 left board
-pio=pioE20
+# pioB 14 is LoRa 1.0 single board or LoRa 1.5 right board
+pio=pioB14
 
 config_get pin SX1301_conf reset_pin
 
@@ -33,7 +33,8 @@ fi
 echo "out" > /sys/class/gpio/${pio}/direction
 echo "1" > /sys/class/gpio/${pio}/value
 echo "0" > /sys/class/gpio/${pio}/value
-echo "in" > /sys/class/gpio/${pio}/direction
+#Richiesto da Nicolas
+# echo "in" > /sys/class/gpio/${pio}/direction
 echo ${pin} > /sys/class/gpio/unexport
 
 logger "sx1301 is resetted"
