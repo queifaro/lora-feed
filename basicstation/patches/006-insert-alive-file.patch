@@ -1,0 +1,27 @@
+--- basicstation-2.0.5.orig/src/aio.c	2021-09-14 11:01:25.447875150 +0200
++++ basicstation-2.0.5/src/aio.c	2021-09-14 12:05:41.191556620 +0200
+@@ -32,6 +32,7 @@
+ #include <fcntl.h>
+ #include "rt.h"
+ 
++#include <stdlib.h>
+ 
+ enum { N_AIO_HANDLES = 10 };
+ static aio_t aioHandles[N_AIO_HANDLES];
+@@ -107,7 +108,16 @@
+         int n, maxfd;
+         fd_set rdset;
+         fd_set wrset;
++	int i=0;
+         do {
++
++	    system("touch /tmp/lbs.alive");
++	    i++;
++	    if(i==10000){
++		i=0;
++                LOG(MOD_AIO|ERROR, "COUNTER ALIVE REACH %i",i);
++            }
++
+             maxfd = -1;
+             FD_ZERO(&rdset);
+             FD_ZERO(&wrset);
